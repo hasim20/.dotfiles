@@ -1,0 +1,84 @@
+{ config, pkgs, ... }:
+
+{
+  home.username = "hasim"; # << GANTI DENGAN USERNAME ANDA
+  home.homeDirectory = "/home/hasim"; # << GANTI DENGAN HOME DIRECTORY ANDA
+
+  # =========================================================================
+  # 1. PAKET APLIKASI
+  # =========================================================================
+
+  home.packages = with pkgs; [
+    # Wayland Utilities (HARUS DIINSTAL JIKA DIGUNAKAN DI hyprland.conf)
+    # waybar           # Status bar
+    # wofi             # App launcher
+    # swaylock-effects # Screen locker
+    # grim             # Screenshot
+    # slurp            # Memilih area untuk grim
+    # wl-clipboard     # Clipboard utility
+    # mako             # Notification daemon
+    # pavucontrol      # Mixer audio GUI
+    # hyprpaper        # Wallpaper manager Hyprland
+    
+    # Aplikasi Harian
+    firefox
+    neovim
+    yazi
+    btop             # Monitoring system
+    fastfetch
+
+  ];
+
+  # =========================================================================
+  # 2. HYPRLAND (MENGGUNAKAN FILE EKSTERNAL)
+  # =========================================================================
+  
+  # Blok wayland.windowManager.hyprland DINONAKTIFKAN
+  # (Konfigurasi diambil dari file eksternal Anda, bukan Home Manager)
+  
+  # MENYALIN FILE KONFIGURASI HYPRLAND
+  home.file = {
+    # Menyalin hyprland.conf dari sumber lokal ke lokasi yang ditentukan di configuration.nix.
+    # File ini harus ada di direktori kerja Anda (atau path mutlak) saat menjalankan nixos-rebuild.
+    ".config/hypr" = {
+      # GANTI DENGAN LOKASI FILE .conf ANDA!
+      source = "/home/hasim/.dotfiles/hypr"; 
+      recursive = true;
+    };
+    
+    # Contoh jika Anda punya konfigurasi Waybar juga
+    # ".config/waybar/config" = { source = /path/to/your/waybar/config; };
+  };
+
+  # =========================================================================
+  # 3. UTILITIES WAYLAND (XDG Portals, Fonts)
+  # =========================================================================
+
+  # XDG Portals: Memungkinkan aplikasi Wayland/XWayland (Firefox, GTK apps) 
+  # menggunakan dialog file dan fitur sistem lainnya dengan benar.
+  xdg.portal = {
+    enable = true;
+    wlr.enable = true; # Backend untuk Wayland (Hyprland)
+    extraPortals = [ pkgs.xdg-desktop-portal-gtk ]; # Penting untuk aplikasi GTK
+  };
+
+  # Fonts yang diperlukan sistem
+  fonts.packages = with pkgs; [
+    fira-code        
+    font-awesome     # Untuk ikon di Waybar/lainnya
+    noto-fonts-emoji 
+  ];
+
+  # =========================================================================
+  # 4. KONFIGURASI UMUM HOME MANAGER
+  # =========================================================================
+  
+  # Variabel lingkungan untuk aplikasi pengguna.
+  home.sessionVariables = {
+    TERMINAL = "kitty";
+    EDITOR = "nvim"; # Contoh
+  };
+  
+  # Versi Home Manager (biasanya sama dengan system.stateVersion)
+  home.stateVersion = "25.05"; # << VERIFIKASI VERSI INI
+} 

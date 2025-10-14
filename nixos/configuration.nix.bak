@@ -1,0 +1,223 @@
+{ config, lib, pkgs, ... }:
+
+{
+  imports =
+    [
+      # Include the results of the hardware scan.
+      ./hardware-configuration.nix
+
+      # Mengimpor Home Manager sebagai modul sistem. 
+      # CATATAN PENTING: Jika Anda mendapatkan error 'file not found', 
+      # pastikan Anda menjalankan perintah: 
+      # sudo nix-channel --add https://github.com/nix-community/home-manager/archive/release-24.11.tar.gz home-manager
+      # sudo nix-channel --update<home-manager/nixos>
+    ];
+
+  # Use the systemd-boot EFI boot loader.
+  boot.loader.systemd-boot.enable = true;
+  boot.loader.efi.canTouchEfiVariables = true;
+
+  networking.hostName = "T14"; # Define your hostname.
+  networking.networkmanager.enable = true;  # Easiest to use and most distros use this by default.
+
+  # Set your time zone.
+  time.timeZone = "Asia/Jakarta";
+
+  # =========================================================================
+  # 1. HARDWARE & DRIVERS (AMD ThinkPad T14 Gen 1)
+  # =========================================================================
+
+  # Memungkinkan penggunaan firmware non-free (penting untuk Wi-Fi dan AMDGPU).
+  hardware.enableRedistributableFirmware = true;
+
+  # Memastikan modul kernel AMDGPU dimuat di awal boot (initrd).
+  boot.initrd.kernelModules = [ "amdgpu" ];
+  
+  # Mengaktifkan dukungan akselerasi grafis OpenGL/DRI.
+  hardware.opengl.enable = true;
+  hardware.opengl.driSupport = true;
+
+  # Mengaktifkan layanan pembaca sidik jari (jika tersedia).
+  # services.fprintd.enable = true;
+
+  # =========================================================================
+  # 2. SISTEM DASAR, DISPLAY & GREETD
+  # =========================================================================
+
+  # Mengaktifkan X Server (diperlukan agar XWayland berfungsi).
+  services.xserver.enable = true;
+  services.xserver.layout = "us";
+  
+  # Mengaktifkan Display Manager minimalis Greetd.
+  services.greetd = {
+    enable = true;
+    # Menggunakan tuigreet sebagai greeter (sangat minimalis, berbasis teks TTY).
+    package = pkgs.greetd.withGreeters [ pkgs.greetd.tuigreet ]; 
+    
+    settings = {
+      default_session = {
+        # Perintah yang dijalankan setelah pengguna login. 
+        # tuigreet akan menjalankan sesi yang dipilih (Hyprland).
+        command = "${pkgs.greetd.tuigreet}/bin/tuigreet --cmd Hyprland"; 
+      };
+    };
+  };
+
+  # Mengaktifkan Polkit (untuk otorisasi saat shutdown, mount USB, dll.)
+  security.polkit.enable = true;
+  
+  # Mengaktifkan audio modern PipeWire.
+  # sound.enable = true;
+  services.pipewire.enable = true;
+  services.pipewire.alsa.enable = true;
+  services.pipewire.alsa.support32Bit = true;
+  services.pipewire.pulse.enable = true;
+  
+  # Mengatur font TTY agar lebih nyaman saat boot (opsional).
+  console.font = "latarcyrheb-sun16";
+
+  # =========================================================================
+  # 3. HYPRLAND & UTILITY TINGKAT SISTEM
+  # =========================================================================
+  
+  # Menginstal biner Hyprland dan file sesi di tingkat sistem.
+  programs.hyprland.enable = true;
+
+  # Menentukan lokasi file konfigurasi Hyprland di luar lokasi default.
+  environment.sessionVariables = {
+    # HYPRLAND_CONFIG adalah variabel yang dicari Hyprland saat startup.
+    # HYPRLAND_CONFIG = "/home/hasim/.dotfiles/hypr/hyprland.conf"; # <--- GANTI 'username'
+  };
+  
+  # Paket dasar yang harus tersedia di seluruh sistem.
+  environment.systemPackages = with pkgs; [
+    vim         # Editor dasar
+    git         # Version control
+    zsh         # Shell
+    wget
+    pciutils    # Untuk lspci (melihat hardware)
+    kitty       # Terminal (default jika belum ada Home Manager)
+  ];
+  
+  # Definisi pengguna utama Anda.
+  users.users.hasim = { # << GANTI DENGAN USERNAME ANDA
+    isNormalUser = true;
+    shell = pkgs.zsh;
+    extraGroups = [ 
+      "networkmanager" # Untuk manajemen jaringan
+      "wheel"          # Untuk hak sudo
+      "video"          # Akses GPU
+      "audio"          # Akses Sound Card
+      "input"          # Akses input devices (untuk fprintd)
+      "adbusers"       # Untuk Android ADB jika diperlukan
+    ];
+  };
+
+  # Mengimpor file konfigurasi khusus pengguna (home.nix).
+  home-manager.users.username = import ./home.nix;
+
+  # Memungkinkan instalasi paket yang tidak open-source (unfree).
+  nixpkgs.config.allowUnfree = true;
+
+  # Versi NixOS yang sedang Anda jalankan.
+  system.stateVersion = "25.05";
+
+  # =========================================================================
+  #                             END
+  # =========================================================================
+
+  # Select internationalisation properties.
+  # i18n.defaultLocale = "en_US.UTF-8";
+  # console = {
+  #   font = "Lat2-Terminus16";
+  #   keyMap = "us";
+  #   useXkbConfig = true; # use xkb.options in tty.
+  # };
+
+  # Enable the X11 windowing system.
+  # services.xserver.enable = true;
+
+
+  
+
+  # Configure keymap in X11
+  # services.xserver.xkb.layout = "us";
+  # services.xserver.xkb.options = "eurosign:e,caps:escape";
+
+  # Enable CUPS to print documents.
+  # services.printing.enable = true;
+
+  # Enable sound.
+  # services.pulseaudio.enable = true;
+  # OR
+  # services.pipewire = {
+  #   enable = true;
+  #   pulse.enable = true;
+  # };
+
+  # Enable touchpad support (enabled default in most desktopManager).
+  services.libinput.enable = true;
+
+  # Define a user account. Don't forget to set a password with ‘passwd’.
+  # users.users.alice = {
+  #   isNormalUser = true;
+  #   extraGroups = [ "wheel" ]; # Enable ‘sudo’ for the user.
+  #   packages = with pkgs; [
+  #     tree
+  #   ];
+  # };
+
+  # programs.firefox.enable = true;
+
+  # List packages installed in system profile.
+  # You can use https://search.nixos.org/ to find more packages (and options).
+  # environment.systemPackages = with pkgs; [
+  #   vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
+  #   wget
+  # ];
+
+  # Some programs need SUID wrappers, can be configured further or are
+  # started in user sessions.
+  # programs.mtr.enable = true;
+  # programs.gnupg.agent = {
+  #   enable = true;
+  #   enableSSHSupport = true;
+  # };
+
+  # List services that you want to enable:
+
+  # Enable the OpenSSH daemon.
+  # services.openssh.enable = true;
+
+  # Open ports in the firewall.
+  # networking.firewall.allowedTCPPorts = [ ... ];
+  # networking.firewall.allowedUDPPorts = [ ... ];
+  # Or disable the firewall altogether.
+  # networking.firewall.enable = false;
+
+  # Copy the NixOS configuration file and link it from the resulting system
+  # (/run/current-system/configuration.nix). This is useful in case you
+  # accidentally delete configuration.nix.
+  # system.copySystemConfiguration = true;
+
+  # This option defines the first version of NixOS you have installed on this particular machine,
+  # and is used to maintain compatibility with application data (e.g. databases) created on older NixOS versions.
+  #
+  # Most users should NEVER change this value after the initial install, for any reason,
+  # even if you've upgraded your system to a new NixOS release.
+  #
+  # This value does NOT affect the Nixpkgs version your packages and OS are pulled from,
+  # so changing it will NOT upgrade your system - see https://nixos.org/manual/nixos/stable/#sec-upgrading for how
+  # to actually do that.
+  #
+  # This value being lower than the current NixOS release does NOT mean your system is
+  # out of date, out of support, or vulnerable.
+  #
+  # Do NOT change this value unless you have manually inspected all the changes it would make to your configuration,
+  # and migrated your data accordingly.
+  #
+  # For more information, see `man configuration.nix` or https://nixos.org/manual/nixos/stable/options#opt-system.stateVersion .
+  # system.stateVersion = "25.05"; # Did you read the comment?
+
+}
+
